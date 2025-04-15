@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  clash-config-server:
+  clash-config-merge:
     build:
       context: .
       dockerfile: Dockerfile
