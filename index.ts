@@ -71,7 +71,8 @@ async function fetchAndMergeProxies(urls: string[]): Promise<any[]> {
       const { data } = await axios.get(url, {
         headers: {
           'User-Agent': 'clash'
-        }
+        },
+        timeout: 30000 // 30 seconds timeout
       });
       const clashConfig = yaml.load(data) as any;
       
