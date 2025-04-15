@@ -13,7 +13,4 @@ EXPOSE 3000
 
 # Run the application with required environment variable
 ENV NODE_TLS_REJECT_UNAUTHORIZED=0
-ENTRYPOINT ["bun", "index.ts"]
-
-# Use CMD for default arguments, which can be overridden at runtime
-CMD ["--config", "./clash.yaml", "--url", "https://example.com/clash"] 
+ENTRYPOINT ["bun", "index.ts", "--config", "./clash.yaml"] 

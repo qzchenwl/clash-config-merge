@@ -9,7 +9,7 @@ services:
       - "3000:3000"
     environment:
       - NODE_TLS_REJECT_UNAUTHORIZED=0
-    command: --config ./clash.yaml --url 'https://example.com/clash'
+    command: --url 'https://example.com/clash'
     restart: unless-stopped
     volumes:
       - ./clash.yaml:/app/clash.yaml:ro  # Mount the local clash.yaml as read-only 
