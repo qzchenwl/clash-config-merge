@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Node modules and logs
+node_modules
+*.log
+npm-debug.log*
+
+# Output files
+dist
+updated_clash.yaml
+clash-merged.yaml
+
+# Editor directories and files
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+
+# Testing and documentation
+coverage
+.env* 
