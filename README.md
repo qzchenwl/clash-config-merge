@@ -32,6 +32,10 @@ docker build -t clash-config-server .
 运行容器:
 
 ```bash
+# 基本运行方式
+docker run -p 3000:3000 clash-config-server --url 'https://example.com/clash' --keyword '关键字'
+
+# 可选：如需使用本地的clash.yaml文件
 docker run -p 3000:3000 -v $(pwd)/clash.yaml:/app/clash.yaml:ro clash-config-server --url 'https://example.com/clash' --keyword '关键字'
 ```
 

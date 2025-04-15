@@ -12,4 +12,4 @@ services:
     command: --url 'https://example.com/clash'
     restart: unless-stopped
     volumes:
-      - ./clash.yaml:/app/clash.yaml:ro  # Mount the local clash.yaml as read-only 
+      - ./clash.yaml:/app/clash.yaml:ro  # 可选: 挂载本地的clash.yaml文件（非必须） 
