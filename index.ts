@@ -68,7 +68,11 @@ async function fetchAndMergeProxies(urls: string[]): Promise<any[]> {
     
     try {
       console.log(`正在处理URL[${i}]...`);
-      const { data } = await axios.get(url);
+      const { data } = await axios.get(url, {
+        headers: {
+          'User-Agent': 'clash'
+        }
+      });
       const clashConfig = yaml.load(data) as any;
       
       if (clashConfig?.proxies?.length) {
