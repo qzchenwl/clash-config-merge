@@ -7,6 +7,7 @@ const args = Bun.argv.slice(2);
 let configPath = './clash.yaml';
 let urlsArg: string[] = [];
 let keywordsArg: string[] = [];
+let configName = 'Clash'; // 默认配置名称
 
 // 解析命令行参数
 for (let i = 0; i < args.length; i++) {
@@ -21,6 +22,9 @@ for (let i = 0; i < args.length; i++) {
   } else if (arg === '--keyword' && i + 1 < args.length) {
     const nextArg = args[++i];
     if (nextArg) keywordsArg.push(nextArg);
+  } else if (arg === '--name' && i + 1 < args.length) {
+    const nextArg = args[++i];
+    if (nextArg) configName = nextArg;
   } else if (arg === '--help') {
     console.log(`
 用法: NODE_TLS_REJECT_UNAUTHORIZED=0 bun index.ts [选项]
@@ -29,10 +33,11 @@ for (let i = 0; i < args.length; i++) {
   --config <path>     指定clash配置文件路径 (默认: ./clash.yaml)
   --url <url>         添加代理URL (必须提供至少一个，可多次使用)
   --keyword <keyword> 添加关键字，前缀!表示排除 (可多次使用，默认为空)
+  --name <name>       指定配置名称 (默认: Clash)
   --help              显示帮助信息
 
 示例:
-  bun index.ts --config ./my-clash.yaml --url https://example.com/clash --keyword 日本 --keyword '!香港'
+  bun index.ts --config ./my-clash.yaml --url https://example.com/clash --keyword 日本 --keyword '!香港' --name 'My Clash Config'
 `);
     process.exit(0);
   }
@@ -53,6 +58,7 @@ console.log('使用配置:');
 console.log(`- 配置文件: ${configPath}`);
 console.log(`- URLs: ${urls.join(', ')}`);
 console.log(`- 关键字: ${keywords.length > 0 ? keywords.join(', ') : '(无)'}`);
+console.log(`- 配置名称: ${configName}`);
 
 /**
  * 从多个URL获取并合并代理节点
@@ -110,7 +116,8 @@ function createProxyGroups(proxies: any[], keywords: string[] = []): any[] {
       type: 'url-test',
       proxies: proxyNames,
       url: 'http://www.gstatic.com/generate_204',
-      interval: 300
+      interval: 300,
+      tolerance: 50
     },
     {
       name: '手动选择',
@@ -138,7 +145,8 @@ function createProxyGroups(proxies: any[], keywords: string[] = []): any[] {
       type: 'url-test',
       proxies: filteredProxies,
       url: 'http://www.gstatic.com/generate_204',
-      interval: 300
+      interval: 300,
+      tolerance: 50
     };
   });
   
@@ -170,6 +178,7 @@ function updateClashConfig(config: any, proxies: any[], proxyGroups: any[]): any
   // 更新配置
   config.proxies = proxies;
   config['proxy-groups'] = proxyGroups;
+  config.name = configName; // 设置配置名称
   
   return config;
 }
@@ -251,4 +260,4 @@ console.log(`Clash配置服务已启动，监听端口 ${server.port}`);
 console.log(`- 访问 http://localhost:${server.port} 在浏览器中查看配置`);
 console.log(`- 访问 http://localhost:${server.port}/ping 健康检查`);
 console.log('使用示例:');
-console.log('NODE_TLS_REJECT_UNAUTHORIZED=0 bun index.ts --url https://example.com/clash --keyword 日本 --config ./clash.yaml');
+console.log('NODE_TLS_REJECT_UNAUTHORIZED=0 bun index.ts --url https://example.com/clash --keyword 日本 --config ./clash.yaml --name My Clash Config');
