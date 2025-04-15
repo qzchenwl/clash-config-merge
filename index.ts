@@ -110,7 +110,8 @@ function createProxyGroups(proxies: any[], keywords: string[] = []): any[] {
       type: 'url-test',
       proxies: proxyNames,
       url: 'http://www.gstatic.com/generate_204',
-      interval: 300
+      interval: 300,
+      tolerance: 50
     },
     {
       name: '手动选择',
@@ -138,7 +139,8 @@ function createProxyGroups(proxies: any[], keywords: string[] = []): any[] {
       type: 'url-test',
       proxies: filteredProxies,
       url: 'http://www.gstatic.com/generate_204',
-      interval: 300
+      interval: 300,
+      tolerance: 50
     };
   });
   
