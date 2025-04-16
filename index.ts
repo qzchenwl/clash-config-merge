@@ -9,6 +9,7 @@ let urlsArg: string[] = [];
 let keywordsArg: string[] = [];
 let maxRetries = 3;
 let retryDelay = 3000;
+let accessToken = ''; // 访问令牌，默认为空(不启用)
 
 // 解析命令行参数
 for (let i = 0; i < args.length; i++) {
@@ -29,6 +30,9 @@ for (let i = 0; i < args.length; i++) {
   } else if (arg === '--retry-delay' && i + 1 < args.length) {
     const nextArg = args[++i];
     if (nextArg) retryDelay = parseInt(nextArg, 10) * 1000; // 转换为毫秒
+  } else if (arg === '--token' && i + 1 < args.length) {
+    const nextArg = args[++i];
+    if (nextArg) accessToken = nextArg;
   } else if (arg === '--help') {
     console.log(`
 用法: NODE_TLS_REJECT_UNAUTHORIZED=0 bun index.ts [选项]
@@ -39,10 +43,11 @@ for (let i = 0; i < args.length; i++) {
   --keyword <keyword>  添加关键字，前缀!表示排除 (可多次使用，默认为空)
   --retries <number>   设置请求失败重试次数 (默认: 3)
   --retry-delay <sec>  设置请求失败重试间隔(秒) (默认: 3)
+  --token <string>     设置访问令牌，需要通过URL参数验证 (默认: 不启用)
   --help               显示帮助信息
 
 示例:
-  bun index.ts --config ./my-clash.yaml --url https://example.com/clash --keyword 日本 --keyword '!香港' --retries 5 --retry-delay 5
+  bun index.ts --config ./my-clash.yaml --url https://example.com/clash --keyword 日本 --keyword '!香港' --retries 5 --retry-delay 5 --token mySecretToken
 `);
     process.exit(0);
   }
@@ -65,6 +70,11 @@ console.log(`- URLs: ${urls.join(', ')}`);
 console.log(`- 关键字: ${keywords.length > 0 ? keywords.join(', ') : '(无)'}`);
 console.log(`- 重试次数: ${maxRetries}`);
 console.log(`- 重试间隔: ${retryDelay/1000}秒`);
+if (accessToken) {
+  console.log(`- 访问令牌: 已启用 (${accessToken.substring(0, 3)}${'*'.repeat(Math.max(0, accessToken.length - 3))})`);
+} else {
+  console.log(`- 访问令牌: 未启用`);
+}
 
 /**
  * 带重试功能的请求函数
@@ -262,8 +272,19 @@ const server = Bun.serve({
   routes: {
     // 主路由 - 返回更新后的clash配置
     "/": {
-      GET: async () => {
+      GET: async (req) => {
         try {
+          // 如果设置了访问令牌，验证请求中的token参数
+          if (accessToken) {
+            const url = new URL(req.url);
+            const tokenParam = url.searchParams.get('token');
+            
+            if (!tokenParam || tokenParam !== accessToken) {
+              console.error('访问令牌无效，拒绝请求');
+              return new Response('Unauthorized: Invalid token', { status: 401 });
+            }
+          }
+          
           const yamlConfig = await generateUpdatedConfig();
           console.log('已成功响应配置请求');
           
@@ -284,11 +305,25 @@ const server = Bun.serve({
     },
     
     // 健康检查
-    "/ping": new Response("pong"),
+    "/ping": {
+      GET: (req) => {
+        // 如果设置了访问令牌，验证请求中的token参数
+        if (accessToken) {
+          const url = new URL(req.url);
+          const tokenParam = url.searchParams.get('token');
+          
+          if (!tokenParam || tokenParam !== accessToken) {
+            return new Response('Unauthorized: Invalid token', { status: 401 });
+          }
+        }
+        
+        return new Response("pong");
+      }
+    },
   },
   
   // 未匹配路由的处理
-  fetch() {
+  fetch(req) {
     return new Response("Not Found", { status: 404 });
   }
 });
@@ -296,5 +331,8 @@ const server = Bun.serve({
 console.log(`Clash配置服务已启动，监听端口 ${server.port}`);
 console.log(`- 访问 http://localhost:${server.port} 在浏览器中查看配置`);
 console.log(`- 访问 http://localhost:${server.port}/ping 健康检查`);
+if (accessToken) {
+  console.log(`- 访问需要添加参数: ?token=${accessToken}`);
+}
 console.log('使用示例:');
 console.log('NODE_TLS_REJECT_UNAUTHORIZED=0 bun index.ts --url https://example.com/clash --keyword 日本 --config ./clash.yaml');
