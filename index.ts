@@ -307,16 +307,7 @@ const server = Bun.serve({
     // 健康检查
     "/ping": {
       GET: (req) => {
-        // 如果设置了访问令牌，验证请求中的token参数
-        if (accessToken) {
-          const url = new URL(req.url);
-          const tokenParam = url.searchParams.get('token');
-          
-          if (!tokenParam || tokenParam !== accessToken) {
-            return new Response('Unauthorized: Invalid token', { status: 401 });
-          }
-        }
-        
+        // ping 端点不需要 token 验证，直接返回响应
         return new Response("pong");
       }
     },
