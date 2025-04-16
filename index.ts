@@ -7,6 +7,8 @@ const args = Bun.argv.slice(2);
 let configPath = './clash.yaml';
 let urlsArg: string[] = [];
 let keywordsArg: string[] = [];
+let maxRetries = 3;
+let retryDelay = 3000;
 
 // 解析命令行参数
 for (let i = 0; i < args.length; i++) {
@@ -21,18 +23,26 @@ for (let i = 0; i < args.length; i++) {
   } else if (arg === '--keyword' && i + 1 < args.length) {
     const nextArg = args[++i];
     if (nextArg) keywordsArg.push(nextArg);
+  } else if (arg === '--retries' && i + 1 < args.length) {
+    const nextArg = args[++i];
+    if (nextArg) maxRetries = parseInt(nextArg, 10);
+  } else if (arg === '--retry-delay' && i + 1 < args.length) {
+    const nextArg = args[++i];
+    if (nextArg) retryDelay = parseInt(nextArg, 10) * 1000; // 转换为毫秒
   } else if (arg === '--help') {
     console.log(`
 用法: NODE_TLS_REJECT_UNAUTHORIZED=0 bun index.ts [选项]
 
 选项:
-  --config <path>     指定clash配置文件路径 (默认: ./clash.yaml)
-  --url <url>         添加代理URL (必须提供至少一个，可多次使用)
-  --keyword <keyword> 添加关键字，前缀!表示排除 (可多次使用，默认为空)
-  --help              显示帮助信息
+  --config <path>      指定clash配置文件路径 (默认: ./clash.yaml)
+  --url <url>          添加代理URL (必须提供至少一个，可多次使用)
+  --keyword <keyword>  添加关键字，前缀!表示排除 (可多次使用，默认为空)
+  --retries <number>   设置请求失败重试次数 (默认: 3)
+  --retry-delay <sec>  设置请求失败重试间隔(秒) (默认: 3)
+  --help               显示帮助信息
 
 示例:
-  bun index.ts --config ./my-clash.yaml --url https://example.com/clash --keyword 日本 --keyword '!香港'
+  bun index.ts --config ./my-clash.yaml --url https://example.com/clash --keyword 日本 --keyword '!香港' --retries 5 --retry-delay 5
 `);
     process.exit(0);
   }
@@ -53,6 +63,40 @@ console.log('使用配置:');
 console.log(`- 配置文件: ${configPath}`);
 console.log(`- URLs: ${urls.join(', ')}`);
 console.log(`- 关键字: ${keywords.length > 0 ? keywords.join(', ') : '(无)'}`);
+console.log(`- 重试次数: ${maxRetries}`);
+console.log(`- 重试间隔: ${retryDelay/1000}秒`);
+
+/**
+ * 带重试功能的请求函数
+ * @param url 请求URL
+ * @param index URL索引
+ * @returns 请求结果
+ */
+async function fetchWithRetry(url: string, index: number): Promise<any> {
+  let retries = 0;
+  
+  while (true) {
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'clash'
+        },
+        timeout: 30000 // 30 seconds timeout
+      });
+      return response.data;
+    } catch (error: any) {
+      retries++;
+      if (retries > maxRetries) {
+        console.error(`URL[${index}] 请求失败，已重试 ${maxRetries} 次，放弃请求:`, error.message || '未知错误');
+        throw error;
+      }
+      
+      console.warn(`URL[${index}] 请求失败 (${retries}/${maxRetries})，等待 ${retryDelay/1000} 秒后重试:`, error.message || '未知错误');
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      console.log(`URL[${index}] 正在进行第 ${retries} 次重试...`);
+    }
+  }
+}
 
 /**
  * 从多个URL获取并合并代理节点
@@ -68,12 +112,7 @@ async function fetchAndMergeProxies(urls: string[]): Promise<any[]> {
     
     try {
       console.log(`正在处理URL[${i}]...`);
-      const { data } = await axios.get(url, {
-        headers: {
-          'User-Agent': 'clash'
-        },
-        timeout: 30000 // 30 seconds timeout
-      });
+      const data = await fetchWithRetry(url, i);
       const clashConfig = yaml.load(data) as any;
       
       if (clashConfig?.proxies?.length) {
